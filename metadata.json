@@ -1,0 +1,8 @@
+{
+  "name": "TITIP.ANTRI JATIM — PRD & Landing Page",
+  "description": "PRD komprehensif dan landing page premium food queuing service TITIP.ANTRI khusus wilayah Jawa Timur (Surabaya Raya & Malang Raya).",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
