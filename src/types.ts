@@ -7,13 +7,17 @@ export interface UserProfile {
   photoURL: string | null;
 }
 
+export type DiningStyle = 'Fancy & Fine Dining' | 'Cafe & Dessert' | 'Legendaris & Heritage' | 'Kuliner Rakyat';
+
 export interface Merchant {
   id: string;
   name: string;
   city: 'SURABAYA' | 'MALANG';
   location: string;
   category: string;
-  categoryTag: 'bebek' | 'sate' | 'bakso' | 'cumi' | 'cafe' | 'all';
+  categoryTag: 'fancy' | 'cafe' | 'legendary' | 'bebek' | 'sate' | 'bakso' | 'cumi' | 'rawon' | 'all';
+  diningStyle?: DiningStyle;
+  priceRange?: '$$$$' | '$$$' | '$$' | '$';
   avgWaitMinutes: number;
   crowdLevel: 'Sangat Ramai' | 'Padat Merayap' | 'Normal';
   badge: string;

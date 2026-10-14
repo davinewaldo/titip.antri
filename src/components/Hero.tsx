@@ -40,7 +40,7 @@ export const Hero: React.FC<HeroProps> = ({
 
           <div className="hidden sm:flex items-center gap-4 text-xs font-mono-code text-zinc-400">
             <div className="flex items-center gap-1.5 text-emerald-400">
-              <span>🟢 12 Resto Buka Antrean</span>
+              <span>🟢 24 Resto Terdaftar (Fancy, Cafe & Legenda)</span>
             </div>
             <span>•</span>
             <div className="flex items-center gap-1.5 text-amber-400">

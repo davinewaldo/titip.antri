@@ -9,6 +9,7 @@ import { QueQBookingModal } from './components/QueQBookingModal';
 import { QueQDigitalTicketModal } from './components/QueQDigitalTicketModal';
 import { QueQFloatingTicketBar } from './components/QueQFloatingTicketBar';
 import { Footer } from './components/Footer';
+import { FirebaseAuthHelpModal } from './components/FirebaseAuthHelpModal';
 import { JatimCity, Merchant, QueQBooking, UserProfile } from './types';
 import { TOP_MERCHANTS } from './data/merchants';
 import { 
@@ -18,6 +19,8 @@ import {
   updateQueueTicketInFirestore,
   cancelQueueTicketInFirestore,
   loginWithGoogle,
+  loginWithGoogleRedirect,
+  checkRedirectAuth,
   logoutUser,
   onAuthUserChange,
   fetchUserLatestTicketFromFirestore
@@ -42,9 +45,37 @@ export default function App() {
     }
   });
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  const [authError, setAuthError] = useState<{
+    isOpen: boolean;
+    code?: string;
+    message?: string;
+  } | null>(null);
 
   // Initialize Firebase Auth & Firestore on mount
   useEffect(() => {
+    // Check redirect auth result if user returned from mobile Google redirect flow
+    checkRedirectAuth()
+      .then(async (profile) => {
+        if (profile) {
+          setCurrentUser(profile);
+          try {
+            const userTicket = await fetchUserLatestTicketFromFirestore(profile.uid);
+            if (userTicket) setActiveBooking(userTicket);
+          } catch (e) {
+            console.warn('Could not fetch ticket after redirect login:', e);
+          }
+        }
+      })
+      .catch((err) => {
+        if (err?.code === 'auth/unauthorized-domain' || err?.code === 'auth/popup-blocked') {
+          setAuthError({
+            isOpen: true,
+            code: err.code,
+            message: err.message
+          });
+        }
+      });
+
     // Listen for auth changes
     const unsubscribe = onAuthUserChange(async (user) => {
       setCurrentUser(user);
@@ -112,9 +143,27 @@ export default function App() {
         setActiveBooking(userTicket);
       }
     } catch (err: any) {
-      if (err?.code !== 'auth/popup-closed-by-user') {
-        console.error('Login error:', err);
+      if (err?.code === 'auth/popup-closed-by-user') {
+        return;
       }
+      console.error('Login error:', err);
+      setAuthError({
+        isOpen: true,
+        code: err?.code,
+        message: err?.message || 'Login dengan Google gagal'
+      });
+    }
+  };
+
+  const handleLoginWithGoogleRedirect = async () => {
+    try {
+      await loginWithGoogleRedirect();
+    } catch (err: any) {
+      setAuthError({
+        isOpen: true,
+        code: err?.code,
+        message: err?.message
+      });
     }
   };
 
@@ -206,11 +255,11 @@ export default function App() {
         currentCalling: updated.currentCalling,
         estimatedWaitMinutes: updated.estimatedWaitMinutes,
         status: updated.status,
-        calledAtMs: updated.calledAtMs || null,
-        verificationDeadlineMs: updated.verificationDeadlineMs || null,
-        isCashierVerified: updated.isCashierVerified,
-        verifiedAt: updated.verifiedAt,
-        cancellationReason: updated.cancellationReason
+        calledAtMs: updated.calledAtMs ?? null,
+        verificationDeadlineMs: updated.verificationDeadlineMs ?? null,
+        isCashierVerified: updated.isCashierVerified ?? false,
+        verifiedAt: updated.verifiedAt ?? null,
+        cancellationReason: updated.cancellationReason ?? null
       });
     } catch (e) {
       console.warn('Updated locally, Firestore sync pending:', e);
@@ -321,6 +370,14 @@ export default function App() {
         onClose={() => setIsOutsideModalOpen(false)}
       />
 
+      {/* Firebase Auth Help Modal for Vercel / Domain Configuration */}
+      <FirebaseAuthHelpModal
+        isOpen={!!authError?.isOpen}
+        errorCode={authError?.code}
+        errorMessage={authError?.message}
+        onClose={() => setAuthError(null)}
+        onTryRedirectLogin={handleLoginWithGoogleRedirect}
+      />
     </div>
   );
 }

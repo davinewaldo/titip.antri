@@ -3,6 +3,8 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut, 
   onAuthStateChanged,
   User 
@@ -24,11 +26,23 @@ import firebaseConfig from '../firebase-applet-config.json';
 import { QueQBooking, UserProfile } from './types';
 import { TOP_MERCHANTS } from './data/merchants';
 
+// Resolved config supporting both firebase-applet-config.json and Vercel/Vite environment variables
+const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined;
+const resolvedConfig = {
+  projectId: metaEnv?.VITE_FIREBASE_PROJECT_ID || firebaseConfig.projectId,
+  appId: metaEnv?.VITE_FIREBASE_APP_ID || firebaseConfig.appId,
+  apiKey: metaEnv?.VITE_FIREBASE_API_KEY || firebaseConfig.apiKey,
+  authDomain: metaEnv?.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain,
+  firestoreDatabaseId: metaEnv?.VITE_FIREBASE_DATABASE_ID || firebaseConfig.firestoreDatabaseId,
+  storageBucket: metaEnv?.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfig.storageBucket,
+  messagingSenderId: metaEnv?.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfig.messagingSenderId,
+};
+
 // Initialize Firebase App
-const app = initializeApp(firebaseConfig);
+const app = initializeApp(resolvedConfig);
 
 // Initialize Firestore with Database ID from config
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app, resolvedConfig.firestoreDatabaseId);
 
 // Initialize Firebase Auth
 export const auth = getAuth(app);
@@ -103,6 +117,48 @@ export async function loginWithGoogle(): Promise<UserProfile> {
   }
 }
 
+// Check for redirect result on app initialization (e.g. mobile browsers)
+export async function checkRedirectAuth(): Promise<UserProfile | null> {
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result || !result.user) return null;
+    const user = result.user;
+    const profile: UserProfile = {
+      uid: user.uid,
+      displayName: user.displayName || 'Pengguna QueQ',
+      email: user.email,
+      photoURL: user.photoURL
+    };
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, {
+        uid: profile.uid,
+        displayName: profile.displayName,
+        email: profile.email,
+        photoURL: profile.photoURL,
+        lastLogin: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Profile sync warning on redirect:', e);
+    }
+    return profile;
+  } catch (err) {
+    console.warn('Redirect sign-in check:', err);
+    throw err;
+  }
+}
+
+// Fallback Google Sign In via Redirect for strict mobile browsers
+export async function loginWithGoogleRedirect(): Promise<void> {
+  try {
+    await signInWithRedirect(auth, googleProvider);
+  } catch (err) {
+    console.error('Google Redirect Sign-in failed:', err);
+    throw err;
+  }
+}
+
+
 // Logout
 export async function logoutUser(): Promise<void> {
   await firebaseSignOut(auth);
@@ -149,6 +205,11 @@ export async function initializeMerchantsInFirestore() {
         location: m.location,
         category: m.category,
         categoryTag: m.categoryTag,
+        diningStyle: m.diningStyle || null,
+        priceRange: m.priceRange || null,
+        badge: m.badge || null,
+        signatureDish: m.signatureDish || null,
+        imageUrl: m.imageUrl || null,
         currentCallingNumber: m.currentCallingNumber,
         totalQueuesWaiting: m.totalQueuesWaiting,
         isOpen: m.isOpen,
@@ -198,8 +259,15 @@ export async function saveQueueTicketToFirestore(booking: QueQBooking) {
 export async function updateQueueTicketInFirestore(ticketId: string, updates: Partial<QueQBooking>) {
   const path = `queues/${ticketId}`;
   try {
+    // Sanitize updates: omit undefined values as Firestore updateDoc rejects undefined
+    const cleanUpdates: Record<string, any> = {};
+    for (const [key, val] of Object.entries(updates)) {
+      if (val !== undefined) {
+        cleanUpdates[key] = val;
+      }
+    }
     const queueRef = doc(db, 'queues', ticketId);
-    await updateDoc(queueRef, updates);
+    await updateDoc(queueRef, cleanUpdates);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
