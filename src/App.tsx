@@ -4,21 +4,82 @@ import { Hero } from './components/Hero';
 import { LiveSocialProof } from './components/LiveSocialProof';
 import { HowItWorks } from './components/HowItWorks';
 import { MerchantShowcase } from './components/MerchantShowcase';
-import { PricingCalculator } from './components/PricingCalculator';
-import { PRDViewerModal } from './components/PRDViewerModal';
 import { OutsideJatimModal } from './components/OutsideJatimModal';
+import { QueQBookingModal } from './components/QueQBookingModal';
+import { QueQDigitalTicketModal } from './components/QueQDigitalTicketModal';
+import { QueQFloatingTicketBar } from './components/QueQFloatingTicketBar';
 import { Footer } from './components/Footer';
-import { FileText, MapPin, X, Sparkles } from 'lucide-react';
-import { JatimCity } from './types';
+import { JatimCity, Merchant, QueQBooking, UserProfile } from './types';
+import { TOP_MERCHANTS } from './data/merchants';
+import { 
+  testFirestoreConnection, 
+  initializeMerchantsInFirestore,
+  saveQueueTicketToFirestore,
+  updateQueueTicketInFirestore,
+  cancelQueueTicketInFirestore,
+  loginWithGoogle,
+  logoutUser,
+  onAuthUserChange,
+  fetchUserLatestTicketFromFirestore
+} from './firebase';
 
 export default function App() {
   const [currentCity, setCurrentCity] = useState<JatimCity>('SURABAYA');
-  const [isPRDOpen, setIsPRDOpen] = useState(false);
   const [isOutsideModalOpen, setIsOutsideModalOpen] = useState(false);
-  const [selectedMerchant, setSelectedMerchant] = useState('');
-  const [showTopAlert, setShowTopAlert] = useState(true);
+  
+  // Google Auth User State
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
 
-  // Attempt gentle geolocation detection on mount
+  // QueQ Interactive States
+  const [bookingMerchant, setBookingMerchant] = useState<Merchant | null>(null);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [activeBooking, setActiveBooking] = useState<QueQBooking | null>(() => {
+    try {
+      const saved = localStorage.getItem('queq_active_ticket');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+
+  // Initialize Firebase Auth & Firestore on mount
+  useEffect(() => {
+    // Listen for auth changes
+    const unsubscribe = onAuthUserChange(async (user) => {
+      setCurrentUser(user);
+
+      // If user logs in and doesn't have an active local ticket, check cloud
+      if (user && !activeBooking) {
+        try {
+          const cloudTicket = await fetchUserLatestTicketFromFirestore(user.uid);
+          if (cloudTicket) {
+            setActiveBooking(cloudTicket);
+          }
+        } catch (e) {
+          console.warn('Could not sync user ticket on auth change:', e);
+        }
+      }
+    });
+
+    // Test connection and seed merchants in background
+    testFirestoreConnection().then(() => {
+      initializeMerchantsInFirestore();
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Save active ticket to localStorage whenever it changes
+  useEffect(() => {
+    if (activeBooking) {
+      localStorage.setItem('queq_active_ticket', JSON.stringify(activeBooking));
+    } else {
+      localStorage.removeItem('queq_active_ticket');
+    }
+  }, [activeBooking]);
+
+  // Gentle geolocation detection on mount
   useEffect(() => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -26,9 +87,7 @@ export default function App() {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
           
-          // Distance to Surabaya (-7.2575, 112.7521)
           const distSby = Math.hypot(lat - (-7.2575), lon - 112.7521);
-          // Distance to Malang (-7.9666, 112.6326)
           const distMlg = Math.hypot(lat - (-7.9666), lon - 112.6326);
 
           if (distMlg < 0.35) {
@@ -37,13 +96,36 @@ export default function App() {
             setCurrentCity('SURABAYA');
           }
         },
-        () => {
-          // Default to Surabaya on permission denied or error
-        },
+        () => {},
         { timeout: 5000 }
       );
     }
   }, []);
+
+  const handleLoginWithGoogle = async () => {
+    try {
+      const profile = await loginWithGoogle();
+      setCurrentUser(profile);
+      // Check if user has active ticket in Firestore
+      const userTicket = await fetchUserLatestTicketFromFirestore(profile.uid);
+      if (userTicket) {
+        setActiveBooking(userTicket);
+      }
+    } catch (err: any) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        console.error('Login error:', err);
+      }
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      setCurrentUser(null);
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
 
   const handleSelectCity = (city: JatimCity) => {
     if (city === 'OUTSIDE_JATIM') {
@@ -58,87 +140,182 @@ export default function App() {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleOpenQuickQueue = () => {
+    const featured = TOP_MERCHANTS.find(m => m.city === (currentCity === 'MALANG' ? 'MALANG' : 'SURABAYA')) || TOP_MERCHANTS[0];
+    setBookingMerchant(featured);
+    setIsBookingModalOpen(true);
+  };
+
+  const handleOpenMerchantBooking = (merchant: Merchant) => {
+    setBookingMerchant(merchant);
+    setIsBookingModalOpen(true);
+  };
+
+  const handleConfirmBooking = async (newBooking: QueQBooking) => {
+    const bookingWithUser: QueQBooking = {
+      ...newBooking,
+      userId: currentUser?.uid || newBooking.userId || null,
+      userEmail: currentUser?.email || newBooking.userEmail || null
+    };
+
+    setActiveBooking(bookingWithUser);
+    setIsBookingModalOpen(false);
+    setIsTicketModalOpen(true);
+
+    // Save to Firestore Database
+    try {
+      await saveQueueTicketToFirestore(bookingWithUser);
+    } catch (e) {
+      console.warn('Saved locally, Firestore sync pending:', e);
+    }
+  };
+
+  // Background interval check for 5-minute cashier verification AFTER being called
+  useEffect(() => {
+    if (!activeBooking) return;
+    if (activeBooking.isCashierVerified) return;
+    // 5-minute timer only runs when user has been called
+    if (activeBooking.status !== 'called') return;
+
+    const interval = setInterval(() => {
+      if (activeBooking.verificationDeadlineMs && Date.now() >= activeBooking.verificationDeadlineMs) {
+        const expiredTicket: QueQBooking = {
+          ...activeBooking,
+          status: 'expired',
+          cancellationReason: 'Batas waktu 5 menit setelah dipanggil telah habis tanpa konfirmasi di kasir. Antrean dibatalkan otomatis.'
+        };
+        setActiveBooking(expiredTicket);
+        setIsTicketModalOpen(true); // Open modal to alert user immediately
+        updateQueueTicketInFirestore(activeBooking.ticketId, {
+          status: 'expired',
+          cancellationReason: 'Batas waktu 5 menit setelah dipanggil telah habis tanpa konfirmasi di kasir. Antrean dibatalkan otomatis.'
+        }).catch(err => console.warn('Sync expired error:', err));
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeBooking]);
+
+  const handleUpdateBooking = async (updated: QueQBooking) => {
+    setActiveBooking(updated);
+
+    // Update in Firestore Database
+    try {
+      await updateQueueTicketInFirestore(updated.ticketId, {
+        queuesAhead: updated.queuesAhead,
+        currentCalling: updated.currentCalling,
+        estimatedWaitMinutes: updated.estimatedWaitMinutes,
+        status: updated.status,
+        calledAtMs: updated.calledAtMs || null,
+        verificationDeadlineMs: updated.verificationDeadlineMs || null,
+        isCashierVerified: updated.isCashierVerified,
+        verifiedAt: updated.verifiedAt,
+        cancellationReason: updated.cancellationReason
+      });
+    } catch (e) {
+      console.warn('Updated locally, Firestore sync pending:', e);
+    }
+  };
+
+  const handleCancelTicket = async () => {
+    if (confirm('Apakah Anda yakin ingin membatalkan nomor antrean ini?')) {
+      if (activeBooking) {
+        try {
+          await cancelQueueTicketInFirestore(activeBooking.ticketId);
+        } catch (e) {
+          console.warn('Deleted locally, Firestore pending:', e);
+        }
+      }
+      setActiveBooking(null);
+      setIsTicketModalOpen(false);
+    }
+  };
+
+  const handleResetTicket = async () => {
+    if (activeBooking) {
+      try {
+        await cancelQueueTicketInFirestore(activeBooking.ticketId);
+      } catch (e) {
+        console.warn('Error clearing ticket:', e);
+      }
+    }
+    setActiveBooking(null);
+    setIsTicketModalOpen(false);
+    handleExploreMerchants();
+  };
+
   return (
-    <div className="min-h-screen bg-[#090A0C] text-[#F3F4F6] font-sans relative selection:bg-amber-400 selection:text-black">
+    <div className="min-h-screen bg-[#08090D] text-[#F3F4F6] font-sans relative selection:bg-amber-400 selection:text-black">
       
-      {/* Top Banner Alert */}
-      {showTopAlert && (
-        <aside aria-label="Pengumuman Spesifikasi PRD" className="bg-amber-400 text-black px-4 py-2 text-xs font-mono-code flex items-center justify-between gap-4 border-b border-black/20 z-50 relative">
-          <div className="flex items-center gap-2 overflow-hidden truncate">
-            <span className="bg-black text-amber-300 px-1.5 py-0.5 text-[10px] font-bold uppercase shrink-0">
-              JATIM EDITION // PRD v2.0 APPROVED
-            </span>
-            <span className="truncate">
-              Eksklusif Jawa Timur (Surabaya & Malang). Klik "BACA PRD" untuk spesifikasi CPO & UX.
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => setIsPRDOpen(true)}
-              className="underline font-bold hover:text-zinc-800 text-[11px] flex items-center gap-1"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Buka Dokumen PRD Jatim</span>
-            </button>
-            <button
-              onClick={() => setShowTopAlert(false)}
-              className="text-black/70 hover:text-black"
-              aria-label="Tutup banner"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </aside>
-      )}
-
-      {/* Main Top Navigation */}
+      {/* Main Top Navigation with Google Login & City Switcher */}
       <Navbar
         currentCity={currentCity}
         onSelectCity={handleSelectCity}
-        onOpenPRD={() => setIsPRDOpen(true)}
         onOpenOutsideModal={() => setIsOutsideModalOpen(true)}
+        hasActiveTicket={!!activeBooking}
+        onOpenTicket={() => setIsTicketModalOpen(true)}
+        currentUser={currentUser}
+        onLoginWithGoogle={handleLoginWithGoogle}
+        onLogout={handleLogout}
       />
 
-      {/* Main Sections */}
+      {/* Main Content */}
       <main>
-        {/* 1. Cinematic Hero Section */}
+        {/* 1. Cinematic QueQ Hero Section */}
         <Hero
           currentCity={currentCity}
           onSelectCity={handleSelectCity}
           onExploreMerchants={handleExploreMerchants}
+          onOpenQuickQueue={handleOpenQuickQueue}
         />
 
-        {/* 2. Live Social Proof (East Java Marquee & Toasts) */}
+        {/* 2. Live QueQ Social Proof Ticker */}
         <LiveSocialProof currentCity={currentCity} />
 
-        {/* 3. How It Works 3-Step Interactive Blueprint */}
-        <HowItWorks />
-
-        {/* 4. Curated Top Merchants (East Java Edition Magazine Covers) */}
+        {/* 3. Live QueQ Merchants Grid */}
         <MerchantShowcase
           currentCity={currentCity}
-          onSelectMerchant={(m) => setSelectedMerchant(m)}
+          onOpenBooking={handleOpenMerchantBooking}
         />
 
-        {/* 5. Transparent Pricing Matrix & Giant WhatsApp CTA */}
-        <PricingCalculator
-          currentCity={currentCity}
-          selectedMerchant={selectedMerchant}
-          onMerchantChange={setSelectedMerchant}
-        />
+        {/* 4. How It Works: Solusi Anti-Penumpukan Waiting List */}
+        <HowItWorks />
       </main>
 
       {/* Footer */}
       <Footer
-        onOpenPRD={() => setIsPRDOpen(true)}
         onOpenOutsideModal={() => setIsOutsideModalOpen(true)}
       />
 
-      {/* Comprehensive PRD Document Reader Modal */}
-      <PRDViewerModal isOpen={isPRDOpen} onClose={() => setIsPRDOpen(false)} />
+      {/* QueQ Remote Booking Modal with Google Profile Integration */}
+      <QueQBookingModal
+        isOpen={isBookingModalOpen}
+        merchant={bookingMerchant}
+        currentUser={currentUser}
+        onLoginWithGoogle={handleLoginWithGoogle}
+        onClose={() => setIsBookingModalOpen(false)}
+        onConfirmBooking={handleConfirmBooking}
+      />
 
-      {/* Outside East Java Elegant Notice Modal */}
+      {/* Viral QueQ Digital Boarding Pass Ticket Modal */}
+      <QueQDigitalTicketModal
+        isOpen={isTicketModalOpen}
+        booking={activeBooking}
+        onClose={() => setIsTicketModalOpen(false)}
+        onCancelTicket={handleCancelTicket}
+        onUpdateBooking={handleUpdateBooking}
+        onResetTicket={handleResetTicket}
+      />
+
+      {/* Persistent Floating Bottom Ticket Bar */}
+      {!isTicketModalOpen && (
+        <QueQFloatingTicketBar
+          booking={activeBooking}
+          onOpenTicket={() => setIsTicketModalOpen(true)}
+        />
+      )}
+
+      {/* Outside East Java Modal */}
       <OutsideJatimModal
         isOpen={isOutsideModalOpen}
         onClose={() => setIsOutsideModalOpen(false)}

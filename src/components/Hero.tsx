@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowDown, Zap, Compass, Play, Pause, MapPin } from 'lucide-react';
+import React from 'react';
+import { ArrowDown, Zap, Clock, Bell, Users, CheckCircle2, Ticket } from 'lucide-react';
 import { motion } from 'motion/react';
 import { JatimCity } from '../types';
 
@@ -7,143 +7,130 @@ interface HeroProps {
   currentCity: JatimCity;
   onSelectCity: (city: JatimCity) => void;
   onExploreMerchants: () => void;
+  onOpenQuickQueue: () => void;
 }
 
-export const Hero: React.FC<HeroProps> = ({ currentCity, onSelectCity, onExploreMerchants }) => {
-  const [isPlayingVideo, setIsPlayingVideo] = useState(true);
-
+export const Hero: React.FC<HeroProps> = ({
+  currentCity,
+  onSelectCity,
+  onExploreMerchants,
+  onOpenQuickQueue
+}) => {
   return (
-    <section className="relative min-h-[90vh] lg:min-h-[94vh] flex flex-col justify-between border-b border-white/10 bg-[#090A0C] overflow-hidden">
+    <section className="relative border-b border-white/10 bg-[#090A0E] overflow-hidden pt-8 pb-16 sm:py-20">
       
-      {/* Cinematic Dark Background Layer (Suramadu / Ijen Boulevard Night Atmosphere) */}
+      {/* Background Glow */}
       <div className="absolute inset-0 pointer-events-none z-0">
-        <img
-          src={
-            currentCity === 'MALANG'
-              ? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1920&auto=format&fit=crop'
-              : 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1920&auto=format&fit=crop'
-          }
-          alt="Atmospheric night urban scene in East Java"
-          referrerPolicy="no-referrer"
-          className={`w-full h-full object-cover object-center opacity-25 filter contrast-125 brightness-75 transition-transform duration-1000 ${
-            isPlayingVideo ? 'scale-105' : 'scale-100'
-          }`}
-        />
-        {/* Editorial Gradients & Noise Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#090A0C] via-[#090A0C]/80 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#090A0C] via-[#090A0C]/65 to-transparent" />
-        <div className="absolute inset-0 bg-noise opacity-40" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-amber-400/10 blur-[130px] rounded-full" />
+        <div className="absolute inset-0 bg-noise opacity-30" />
       </div>
 
-      {/* Top Banner Tagline & Coordinates (Editorial Brutalism) */}
-      <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <span className="inline-block w-2.5 h-2.5 bg-amber-400" />
-          <span className="text-[11px] sm:text-xs font-mono-code font-bold uppercase tracking-widest text-zinc-300">
-            JAWA TIMUR PREMIUM QUEUE // SURABAYA RAYA & MALANG RAYA
-          </span>
-        </div>
-
-        <div className="flex items-center gap-4 text-[11px] font-mono-code text-zinc-400">
-          <div className="flex items-center gap-1.5">
-            <Compass className="w-3.5 h-3.5 text-amber-400" />
-            <span>
-              {currentCity === 'MALANG'
-                ? 'MALANG (7.9666° S, 112.6326° E)'
-                : 'SURABAYA (7.2575° S, 112.7521° E)'}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Top Mini Badge (QueQ System Live Status) */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6 sm:mb-8">
+          <div className="inline-flex items-center gap-2 bg-zinc-900/90 border border-amber-400/40 px-3 py-1 rounded-full text-[11px] font-mono-code">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="text-amber-400 font-bold uppercase">QUEQ WAITING LIST SYSTEM</span>
+            <span className="text-zinc-500">•</span>
+            <span className="text-zinc-300">
+              {currentCity === 'MALANG' ? 'MALANG RAYA' : 'SURABAYA RAYA'}
             </span>
           </div>
-          <button
-            onClick={() => setIsPlayingVideo(!isPlayingVideo)}
-            className="hidden sm:flex items-center gap-1 text-zinc-400 hover:text-white transition-colors border border-white/10 px-2 py-0.5 rounded text-[10px]"
-            title="Toggle Cinematic Motion"
-          >
-            {isPlayingVideo ? <Pause className="w-2.5 h-2.5" /> : <Play className="w-2.5 h-2.5" />}
-            <span>{isPlayingVideo ? 'CINEMATIC ACTIVE' : 'CINEMATIC PAUSED'}</span>
-          </button>
-        </div>
-      </div>
 
-      {/* Center Kinetic Typography (Oversized Bold Text - East Java Tone) */}
-      <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="space-y-1 sm:space-y-3"
-        >
-          <div className="overflow-hidden">
-            <h1 className="font-display font-extrabold text-5xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tight text-white uppercase leading-[0.9] select-none">
-              KAMI YANG <span className="text-zinc-600 hover:text-zinc-400 transition-colors">ANTRE.</span>
-            </h1>
-          </div>
-          <div className="overflow-hidden flex flex-wrap items-baseline gap-4 sm:gap-8">
-            <h2 className="font-display font-extrabold text-5xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tight text-amber-400 uppercase leading-[0.9] select-none">
-              ANDA TINGGAL NIKMATI.
-            </h2>
-            <div className="flex items-center gap-2 self-center">
-              <span className="text-xs sm:text-sm font-mono-code text-zinc-300 border border-amber-400/40 bg-zinc-950/80 px-3 py-1 uppercase">
-                {currentCity === 'MALANG' ? 'EDISI MALANG RAYA' : 'EDISI SURABAYA RAYA'}
-              </span>
+          <div className="hidden sm:flex items-center gap-4 text-xs font-mono-code text-zinc-400">
+            <div className="flex items-center gap-1.5 text-emerald-400">
+              <span>🟢 12 Resto Buka Antrean</span>
             </div>
+            <span>•</span>
+            <div className="flex items-center gap-1.5 text-amber-400">
+              <span>⚡ Datang Pas Giliran</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Center Big Headline */}
+        <motion.div
+          initial={{ opacity: 0, y: 25 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-left max-w-4xl"
+        >
+          <h1 className="font-display font-black text-5xl sm:text-7xl md:text-8xl text-white uppercase tracking-tight leading-[0.92]">
+            ANTRE DARI HP.<br />
+            <span className="text-amber-400">DATANG PAS GILIRAN.</span>
+          </h1>
+
+          <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-zinc-300 font-normal leading-relaxed max-w-2xl">
+            Aplikasi waiting list restoran modern ala <strong>QueQ</strong>. Ambil tiket antrean digital dari mana saja, pantau sisa meja secara live, dan datang santai tepat saat giliran tiba tanpa perlu berdiri mengular di resto.
+          </p>
+
+          {/* Quick Action CTAs */}
+          <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-3">
+            <button
+              onClick={onOpenQuickQueue}
+              className="px-6 py-4 bg-amber-400 hover:bg-amber-300 text-black font-display font-black text-sm uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-amber-400/20 active:scale-95 flex items-center gap-2"
+            >
+              <Ticket className="w-4 h-4" />
+              <span>Ambil Nomor Antrean</span>
+            </button>
+
+            <button
+              onClick={onExploreMerchants}
+              className="px-6 py-4 bg-zinc-900 hover:bg-zinc-800 text-white border border-white/20 hover:border-amber-400/50 font-mono-code text-xs uppercase tracking-wider rounded-xl transition-all flex items-center gap-2"
+            >
+              <span>Lihat Antrean Resto</span>
+              <ArrowDown className="w-4 h-4 text-amber-400" />
+            </button>
           </div>
         </motion.div>
 
-        {/* Quick Value Metrics Ribbon */}
-        <div className="mt-8 sm:mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-white/10 max-w-4xl font-mono-code text-xs">
-          <div>
-            <span className="text-zinc-500 block text-[10px] uppercase">Rata-Rata Hemat Waktu</span>
-            <span className="text-base sm:text-lg font-bold text-white">88 Menit / Order</span>
-          </div>
-          <div>
-            <span className="text-zinc-500 block text-[10px] uppercase">Akurasi Tiket Fisik</span>
-            <span className="text-base sm:text-lg font-bold text-emerald-400">100% Ceklis Foto WA</span>
-          </div>
-          <div>
-            <span className="text-zinc-500 block text-[10px] uppercase">Proteksi Sajian</span>
-            <span className="text-base sm:text-lg font-bold text-white">Thermal Insulated Bag</span>
-          </div>
-          <div>
-            <span className="text-zinc-500 block text-[10px] uppercase">Tarif Flat Kota</span>
-            <span className="text-base sm:text-lg font-bold text-amber-400">Mulai Rp 30.000</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Architectural Row (Caption / Overlay Deskripsi di Pojok Kiri Bawah) */}
-      <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-8 sm:pb-12 grid grid-cols-1 lg:grid-cols-12 gap-6 items-end border-t border-white/10 pt-6">
-        
-        {/* Bottom-Left Caption Overlay */}
-        <div className="lg:col-span-7 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono-code font-bold text-amber-400 uppercase tracking-widest">
-              01 // MANIFESTO AREK JATIM
-            </span>
-            <span className="h-px w-12 bg-amber-400/40" />
-          </div>
-          <p className="text-sm sm:text-base text-zinc-300 font-light leading-relaxed max-w-2xl">
-            Ojo ngentekno 90 menit wektumu mung gawe ngadeg kepanasan nang trotoar ngenteni sego cumi, sate klopo, bebek sinjay, utawa sego resek. Pasukan pilot joki TITIP.ANTRI sing budhal berjuang nang barisan ngarep kasir, koen kari lungguh anteng nyruput kopi neng kantor utawa kosan.
-          </p>
-        </div>
-
-        {/* Bottom-Right Interaction Trigger */}
-        <div className="lg:col-span-5 flex flex-wrap sm:flex-nowrap items-center justify-start lg:justify-end gap-3">
-          <button
-            onClick={onExploreMerchants}
-            id="btn-hero-explore"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-white border border-white/20 hover:border-amber-400/60 px-5 py-3 text-xs font-mono-code uppercase tracking-wider rounded transition-all"
-          >
-            <span>Delok Kuliner Legendaris</span>
-            <ArrowDown className="w-3.5 h-3.5 text-amber-400" />
-          </button>
-          <a
-            href="#pricing"
-            id="btn-hero-order"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-black px-5 py-3 text-xs font-mono-code font-bold uppercase tracking-wider rounded transition-transform active:scale-95 shadow-lg shadow-amber-400/10"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>Hitung Tarif Flat Jatim</span>
-          </a>
+        {/* QueQ 4 Core Features (Pure Waiting List / Anti Crowding) */}
+        <div className="mt-12 sm:mt-16 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {[
+            {
+              icon: Zap,
+              title: 'Remote Queue',
+              desc: 'Ambil tiket antrean dari HP sebelum tiba di lokasi resto.',
+              accent: 'text-amber-400'
+            },
+            {
+              icon: Clock,
+              title: 'Live Monitor Meja',
+              desc: 'Pantau nomor dipanggil & sisa antrean secara real-time.',
+              accent: 'text-emerald-400'
+            },
+            {
+              icon: Bell,
+              title: 'Auto Buzzer Alert',
+              desc: 'Notifikasi getar otomatis saat tersisa 2 antrean lagi.',
+              accent: 'text-cyan-400'
+            },
+            {
+              icon: CheckCircle2,
+              title: 'Cegah Kerumunan',
+              desc: 'Bebas jalan-jalan atau ngopi, datang pas nomor dipanggil.',
+              accent: 'text-amber-400'
+            }
+          ].map((feat, idx) => {
+            const Icon = feat.icon;
+            return (
+              <div
+                key={idx}
+                className="p-4 sm:p-5 rounded-2xl bg-zinc-900/60 border border-white/10 hover:border-amber-400/40 transition-colors"
+              >
+                <div className="w-9 h-9 rounded-xl bg-black/60 border border-white/10 flex items-center justify-center mb-3">
+                  <Icon className={`w-4 h-4 ${feat.accent}`} />
+                </div>
+                <h2 className="font-display font-bold text-sm sm:text-base text-white">
+                  {feat.title}
+                </h2>
+                <p className="mt-1 text-xs text-zinc-400 font-light">
+                  {feat.desc}
+                </p>
+              </div>
+            );
+          })}
         </div>
 
       </div>

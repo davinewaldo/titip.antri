@@ -53,10 +53,10 @@ export const OutsideJatimModal: React.FC<OutsideJatimModalProps> = ({ isOpen, on
         {/* Body Text */}
         <div className="space-y-3 text-sm text-zinc-300 font-light leading-relaxed">
           <p>
-            Armada pilot <strong className="text-white font-semibold">TITIP.ANTRI</strong> saat ini beroperasi secara <strong className="text-amber-400">eksklusif di wilayah Jawa Timur (Surabaya Raya & Malang Raya)</strong> demi menjaga standar kualitas nomor antrean fisik 100% otentik dan kecepatan antar.
+            Layanan antrean digital <strong className="text-white font-semibold">TITIP.ANTRI</strong> saat ini terhubung secara <strong className="text-amber-400">eksklusif dengan restoran di Jawa Timur (Surabaya Raya & Malang Raya)</strong> untuk sistem waiting list digital anti-penumpukan.
           </p>
           <p className="text-xs text-zinc-400">
-            Apakah Anda berdomisili di luar Jawa Timur (misal Jakarta, Bandung, Semarang, atau Bali)? Daftarkan kota Anda untuk menjadi prioritas ekspansi berikutnya.
+            Apakah Anda berdomisili di luar Jawa Timur (misal Jakarta, Bandung, Semarang, atau Bali)? Daftarkan kota Anda untuk menjadi prioritas integrasi resto berikutnya.
           </p>
         </div>
 

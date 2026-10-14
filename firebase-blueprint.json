@@ -1,0 +1,191 @@
+{
+  "entities": {
+    "Merchant": {
+      "title": "Merchant",
+      "description": "Restoran yang terdaftar dalam sistem waiting list QueQ",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identifier unik merchant",
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "description": "Nama restoran",
+          "maxLength": 100
+        },
+        "city": {
+          "type": "string",
+          "enum": ["SURABAYA", "MALANG"],
+          "description": "Kota wilayah operasional"
+        },
+        "location": {
+          "type": "string",
+          "description": "Alamat lokasi restoran",
+          "maxLength": 200
+        },
+        "category": {
+          "type": "string",
+          "description": "Kategori kuliner",
+          "maxLength": 100
+        },
+        "categoryTag": {
+          "type": "string",
+          "enum": ["bebek", "sate", "bakso", "cumi", "cafe", "all"],
+          "description": "Tag filter kategori"
+        },
+        "currentCallingNumber": {
+          "type": "string",
+          "description": "Nomor antrean yang sedang dipanggil",
+          "maxLength": 16
+        },
+        "totalQueuesWaiting": {
+          "type": "number",
+          "description": "Jumlah meja yang masih menunggu"
+        },
+        "isOpen": {
+          "type": "boolean",
+          "description": "Status antrean aktif atau tutup"
+        },
+        "distanceKm": {
+          "type": "number",
+          "description": "Jarak radius dari pusat area dalam km"
+        }
+      },
+      "required": ["id", "name", "city", "currentCallingNumber", "totalQueuesWaiting", "isOpen"]
+    },
+    "QueueTicket": {
+      "title": "QueueTicket",
+      "description": "Tiket antrean digital resmi pemesan QueQ",
+      "type": "object",
+      "properties": {
+        "ticketId": {
+          "type": "string",
+          "description": "ID unik tiket antrean",
+          "maxLength": 64
+        },
+        "merchantId": {
+          "type": "string",
+          "description": "ID merchant restoran tujuan",
+          "maxLength": 64
+        },
+        "merchantName": {
+          "type": "string",
+          "description": "Nama restoran",
+          "maxLength": 100
+        },
+        "merchantLocation": {
+          "type": "string",
+          "description": "Lokasi restoran",
+          "maxLength": 200
+        },
+        "merchantCity": {
+          "type": "string",
+          "enum": ["SURABAYA", "MALANG"],
+          "description": "Kota restoran"
+        },
+        "partySize": {
+          "type": "string",
+          "enum": ["1-2 Orang", "3-4 Orang", "5+ Orang"],
+          "description": "Ukuran meja atau jumlah tamu"
+        },
+        "ticketNumber": {
+          "type": "string",
+          "description": "Nomor tiket antrean (contoh: A-044)",
+          "maxLength": 16
+        },
+        "currentCalling": {
+          "type": "string",
+          "description": "Nomor yang sedang dipanggil saat tiket dibuat",
+          "maxLength": 16
+        },
+        "queuesAhead": {
+          "type": "number",
+          "description": "Jumlah antrean di depan tiket ini"
+        },
+        "estimatedWaitMinutes": {
+          "type": "number",
+          "description": "Estimasi waktu tunggu dalam menit"
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Nama pemesan tiket",
+          "maxLength": 100
+        },
+        "customerPhone": {
+          "type": "string",
+          "description": "Nomor WhatsApp untuk notifikasi panggilan",
+          "maxLength": 32
+        },
+        "status": {
+          "type": "string",
+          "enum": ["waiting", "almost_ready", "called", "completed", "cancelled"],
+          "description": "Status antrean tiket"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Waktu tiket dibuat (HH:mm WIB)",
+          "maxLength": 32
+        },
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID akun pengguna Google",
+          "maxLength": 128
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "Email akun Google pengguna",
+          "maxLength": 128
+        }
+      },
+      "required": ["ticketId", "merchantId", "merchantName", "partySize", "ticketNumber", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Data profil akun pengguna yang masuk via Google",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth User UID",
+          "maxLength": 128
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Nama lengkap Google pengguna",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "description": "Email akun Google",
+          "maxLength": 128
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL foto avatar Google",
+          "maxLength": 500
+        },
+        "lastLogin": {
+          "type": "string",
+          "description": "Waktu login terakhir ISO string"
+        }
+      },
+      "required": ["uid", "email"]
+    }
+  },
+  "firestore": {
+    "/merchants/{merchantId}": {
+      "schema": { "$ref": "Merchant" },
+      "description": "Koleksi data restoran dengan status live counter antrean"
+    },
+    "/queues/{ticketId}": {
+      "schema": { "$ref": "QueueTicket" },
+      "description": "Koleksi tiket antrean digital yang dipesan oleh pelanggan"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "UserProfile" },
+      "description": "Koleksi data profil akun Google pengguna"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation for Queue Ticket
+    function isValidQueueTicket(data) {
+      return data.keys().hasAll(['ticketId', 'merchantId', 'merchantName', 'partySize', 'ticketNumber', 'status'])
+        && data.ticketId is string && data.ticketId.size() <= 64
+        && data.merchantId is string && data.merchantId.size() <= 64
+        && data.merchantName is string && data.merchantName.size() <= 100
+        && data.partySize in ['1-2 Orang', '3-4 Orang', '5+ Orang']
+        && data.ticketNumber is string && data.ticketNumber.size() <= 16
+        && data.status in ['waiting', 'almost_ready', 'called', 'completed', 'cancelled']
+        && (!('queuesAhead' in data) || data.queuesAhead is number)
+        && (!('estimatedWaitMinutes' in data) || data.estimatedWaitMinutes is number)
+        && (!('customerName' in data) || (data.customerName is string && data.customerName.size() <= 100))
+        && (!('customerPhone' in data) || (data.customerPhone is string && data.customerPhone.size() <= 32))
+        && (!('userId' in data) || data.userId == null || (data.userId is string && data.userId.size() <= 128))
+        && (!('userEmail' in data) || data.userEmail == null || (data.userEmail is string && data.userEmail.size() <= 128));
+    }
+
+    // Validation for Merchant
+    function isValidMerchant(data) {
+      return data.keys().hasAll(['id', 'name', 'city', 'currentCallingNumber', 'totalQueuesWaiting', 'isOpen'])
+        && data.id is string && data.id.size() <= 64
+        && data.name is string && data.name.size() <= 100
+        && data.city in ['SURABAYA', 'MALANG']
+        && data.currentCallingNumber is string && data.currentCallingNumber.size() <= 16
+        && data.totalQueuesWaiting is number
+        && data.isOpen is bool;
+    }
+
+    // Default Deny All Catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Merchants Collection: Public Read, Write with validation
+    match /merchants/{merchantId} {
+      allow read: if isValidId(merchantId);
+      allow create, update: if isValidId(merchantId) && isValidMerchant(incoming());
+      allow delete: if false;
+    }
+
+    // Queues Collection: Public queue ticket creation and tracking
+    match /queues/{ticketId} {
+      allow read: if isValidId(ticketId);
+      allow create: if isValidId(ticketId) && isValidQueueTicket(incoming());
+      allow update: if isValidId(ticketId) && isValidQueueTicket(incoming())
+        && incoming().ticketId == existing().ticketId
+        && incoming().merchantId == existing().merchantId;
+      allow delete: if isValidId(ticketId);
+    }
+
+    // Users Collection: Profiles for Google-authenticated users
+    match /users/{userId} {
+      allow read, write: if isValidId(userId);
+    }
+  }
+}
